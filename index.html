@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-AI Prompt Generator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <h1>Multi-AI Prompt Generator</h1>
+    <p>Generate optimized prompts using multiple AI models for better results</p>
+    
+    <!-- Generation Method Selection -->
+    <div class="generation-methods">
+      <div class="method-option active" id="template-method">Template-Based</div>
+      <div class="method-option" id="single-ai-method">Single AI</div>
+      <div class="method-option" id="multi-ai-method">Multi-AI Aggregation</div>
+    </div>
+
+    <!-- API Key Section -->
+    <div id="api-key-section" class="api-key-section" style="display: none;">
+      <label for="openai-api-key">OpenAI API Key</label>
+      <input type="password" id="openai-api-key" placeholder="Enter your OpenAI API key">
+      
+      <div id="deepseek-key-section" style="margin-top: 15px; display: none;">
+        <label for="deepseek-api-key">DeepSeek API Key (Optional)</label>
+        <input type="password" id="deepseek-api-key" placeholder="Enter your DeepSeek API key">
+      </div>
+      
+      <p style="font-size: 12px; color: #718096; margin-top: 5px;">Your API keys are stored locally and only used to generate prompts</p>
+    </div>
+    
+    <!-- Input Form -->
+    <div class="form-group">
+      <label for="keywords">Keywords or Phrases</label>
+      <input type="text" id="keywords" placeholder="Enter keywords separated by commas">
+    </div>
+    
+    <div class="form-group">
+      <label for="tone">Tone</label>
+      <select id="tone">
+        <option value="professional">Professional</option>
+        <option value="casual">Casual</option>
+        <option value="academic">Academic</option>
+        <option value="friendly">Friendly</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="length">Length</label>
+      <select id="length">
+        <option value="short">Short</option>
+        <option value="medium">Medium</option>
+        <option value="long">Long</option>
+      </select>
+    </div>
+    
+    <button id="generate">Generate Prompt</button>
+    
+    <!-- Loading Section -->
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Generating your optimized prompt...</p>
+    </div>
+
+    <!-- Flow Diagram (for Multi-AI mode) -->
+    <div id="flow-diagram" class="flow-diagram">
+      <div class="flow-step" id="step-query">Query</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" id="step-models">Multiple Models</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" id="step-aggregate">Aggregation</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" id="step-final">Final Prompt</div>
+    </div>
+
+    <!-- Model Results (for Multi-AI mode) -->
+    <div id="model-results" class="models-container" style="display: none;"></div>
+
+    <!-- Results Section -->
+    <div id="result" style="display: none;">
+      <div class="form-group">
+        <label for="prompt">Generated Prompt</label>
+        <textarea id="prompt" rows="6" readonly></textarea>
+        <div id="prompt-source" class="prompt-source"></div>
+      </div>
+      <button id="copy" class="success">Copy to Clipboard</button>
+    </div>
+
+    <!-- Troubleshooting Button -->
+    <div style="text-align: center; margin-top: 20px;">
+      <button id="troubleshoot-button" class="secondary-button" style="display: none;">
+        Troubleshoot API Issues
+      </button>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <p>Made with ✨ for better prompting. No data is sent to any server except the API providers.</p>
+    </div>
+  </div>
+  
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+  
+  <!-- Troubleshooting Modal -->
+  <div id="troubleshoot-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">API Troubleshooting Guide</div>
+        <button class="modal-close">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="troubleshooting-item">
+          <div class="troubleshooting-title">OpenAI API Key Issues</div>
+          <p>If you're having issues with the OpenAI API:</p>
+          <ul>
+            <li>Verify your API key is correct and hasn't expired</li>
+            <li>Check if you have sufficient credits in your OpenAI account</li>
+            <li>Make sure you're not hitting rate limits (free tier is limited)</li>
+            <li>Try regenerating your API key in the OpenAI dashboard</li>
+          </ul>
+        </div>
+        
+        <div class="troubleshooting-item">
+          <div class="troubleshooting-title">DeepSeek API Key Issues</div>
+          <p>If you're having issues with the DeepSeek API:</p>
+          <ul>
+            <li>Verify your API key is correct</li>
+            <li>Check that you have sufficient usage quota remaining</li>
+            <li>Make sure the DeepSeek API is available (status.deepseek.com)</li>
+          </ul>
+        </div>
+        
+        <div class="troubleshooting-item">
+          <div class="troubleshooting-title">Network or CORS Issues</div>
+          <p>If you're experiencing network-related problems:</p>
+          <ul>
+            <li>Check your internet connection</li>
+            <li>Try using a different browser</li>
+            <li>Disable any browser extensions that might interfere with API calls</li>
+            <li>If using a corporate network, check if API access is blocked</li>
+          </ul>
+        </div>
+        
+        <div class="troubleshooting-item">
+          <div class="troubleshooting-title">Alternative Options</div>
+          <p>If you can't resolve API issues:</p>
+          <ul>
+            <li>Use the template-based generation method which doesn't require API keys</li>
+            <li>Try again later as the issue might be temporary</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- External JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
