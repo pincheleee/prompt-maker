@@ -43,13 +43,25 @@ function App() {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedPrompt)
-    toast({
-      title: 'Copied!',
-      description: 'Prompt copied to clipboard',
-      status: 'success',
-      duration: 2000,
-      isClosable: true,
-    })
+      .then(() => {
+        toast({
+          title: 'Copied!',
+          description: 'Prompt copied to clipboard',
+          status: 'success',
+          duration: 2000,
+          isClosable: true,
+        })
+      })
+      .catch((err) => {
+        console.error('Clipboard error:', err)
+        toast({
+          title: 'Error',
+          description: 'Failed to copy. Please copy manually.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        })
+      })
   }
 
   return (

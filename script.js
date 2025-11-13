@@ -1,12 +1,15 @@
 // Store API keys in local storage
+// WARNING: localStorage is vulnerable to XSS attacks. API keys stored here could be
+// accessed by malicious scripts. Consider using sessionStorage for better security,
+// or implement additional security measures if this app is deployed in production.
 document.addEventListener('DOMContentLoaded', function() {
   const openaiKeyInput = document.getElementById('openai-api-key');
   const deepseekKeyInput = document.getElementById('deepseek-api-key');
-  
+
   if (localStorage.getItem('openai-api-key')) {
     openaiKeyInput.value = localStorage.getItem('openai-api-key');
   }
-  
+
   if (localStorage.getItem('deepseek-api-key')) {
     deepseekKeyInput.value = localStorage.getItem('deepseek-api-key');
   }
@@ -84,8 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const prompt = document.getElementById('prompt').value;
     navigator.clipboard.writeText(prompt).then(function() {
       showToast('Prompt copied to clipboard', 'success');
-    }).catch(function() {
-      showToast('Failed to copy prompt', 'error');
+    }).catch(function(err) {
+      console.error('Clipboard error:', err);
+      showToast('Failed to copy prompt. Please copy manually.', 'error');
     });
   });
 
@@ -175,7 +179,7 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
         }
         
         throw new Error(`OpenAI API Error: ${errorMessage}`);
-      }).catch(jsonError => {
+      }, jsonError => {
         // If parsing the error response fails
         throw new Error(`OpenAI API Error: ${response.status} ${response.statusText}`);
       });
@@ -183,6 +187,9 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
     return response.json();
   })
   .then(data => {
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message) {
+      throw new Error('Unexpected response format from OpenAI API');
+    }
     const generatedPrompt = data.choices[0].message.content;
     document.getElementById('prompt').value = generatedPrompt;
     document.getElementById('prompt-source').textContent = 'Source: OpenAI GPT-3.5 Turbo';
@@ -404,14 +411,19 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
         }
         
         throw new Error(`OpenAI API Error: ${errorMessage}`);
-      }).catch(jsonError => {
+      }, jsonError => {
         // If parsing the error response fails
         throw new Error(`OpenAI API Error: ${response.status} ${response.statusText}`);
       });
     }
     return response.json();
   })
-  .then(data => data.choices[0].message.content);
+  .then(data => {
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message) {
+      throw new Error('Unexpected response format from OpenAI API');
+    }
+    return data.choices[0].message.content;
+  });
 }
 
 function generateDeepSeekPrompt(keywords, tone, length, apiKey) {
@@ -456,7 +468,7 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
         }
         
         throw new Error(`DeepSeek API Error: ${errorMessage}`);
-      }).catch(jsonError => {
+      }, jsonError => {
         // If parsing the error response fails
         throw new Error(`DeepSeek API Error: ${response.status} ${response.statusText}`);
       });
@@ -510,7 +522,12 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
     }
     return response.json();
   })
-  .then(data => data.choices[0].message.content);
+  .then(data => {
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message) {
+      throw new Error('Unexpected response format from OpenAI API');
+    }
+    return data.choices[0].message.content;
+  });
 }
 
 function localAggregatePrompts(prompts) {
@@ -561,7 +578,8 @@ function createModelCard(title, description) {
 }
 
 function setModelStatus(card, status) {
-  card.querySelector('.model-status').textContent = `Status: ${status}`;
+  const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+  card.querySelector('.model-status').textContent = `Status: ${statusText}`;
   if (status === 'complete') {
     card.className = 'model-card complete';
   } else if (status === 'error') {
