@@ -1,51 +1,96 @@
 # Multi-AI Prompt Generator
 
-A powerful web-based tool that generates optimized prompts for LLMs (Large Language Models) like ChatGPT using multiple AI models.
+A web-based tool that generates optimized prompts for LLMs (ChatGPT, Claude, etc.) using multiple AI models. Built with vanilla HTML, CSS, and JavaScript, bundled with Vite.
 
 ## Features
 
-- **Multiple Generation Methods**:
-  - Template-based generation (no API key required)
-  - Single AI generation with OpenAI
-  - Multi-AI aggregation combining multiple models
+- **Three Generation Methods**:
+  - **Template-based** -- no API key required, instant local generation
+  - **Single AI** -- uses OpenAI GPT-4o Mini to craft an optimized prompt
+  - **Multi-AI Aggregation** -- queries multiple models (OpenAI + DeepSeek + template baseline), then aggregates results into one final prompt
 
 - **Supported AI Models**:
-  - OpenAI GPT-3.5 Turbo
-  - DeepSeek AI
-  - Basic template generation
+  - OpenAI GPT-4o Mini
+  - DeepSeek Chat (optional)
+  - Built-in template generator (baseline)
 
-- **Customization Options**:
-  - Different tones (Professional, Casual, Academic, Friendly)
-  - Length options (Short, Medium, Long)
-  - Keyword/topic input
+- **Customization**:
+  - Tone: Professional, Casual, Academic, Friendly
+  - Length: Short, Medium, Long
+  - Free-form keyword / topic input
 
-- **Resilient Design**:
-  - Fallback mechanisms when APIs fail
-  - Local aggregation when cloud services are unavailable
-  - Detailed error handling and troubleshooting guides
+- **Reliability**:
+  - 30-second request timeouts (AbortController) on every API call
+  - Debounce guard prevents duplicate submissions while a request is in flight
+  - Local aggregation fallback when the cloud aggregator fails
+  - Detailed error handling with a troubleshooting modal
 
-## Usage
+## Tech Stack
 
-1. Open `index.html` in your web browser
-2. Choose a generation method:
-   - **Template-Based**: Simple, works without API keys
-   - **Single AI**: Uses just OpenAI's API
-   - **Multi-AI**: Combines multiple AI models for better results
-3. Enter API keys if needed
-4. Enter keywords/topics
-5. Select tone and length
-6. Click "Generate Prompt"
-7. Copy the generated prompt to use with ChatGPT or other LLMs
+| Layer | Tool |
+|-------|------|
+| Markup | HTML5 |
+| Styles | CSS3 |
+| Logic  | Vanilla JavaScript (ES modules) |
+| Bundler | Vite 6 |
 
-## API Keys
+No frameworks -- no React, no TypeScript.
 
-- **OpenAI**: Required for Single AI and Multi-AI methods
-  - Get from: [OpenAI API Keys](https://platform.openai.com/api-keys)
-- **DeepSeek**: Optional for Multi-AI method
-  - Get from: [DeepSeek Platform](https://platform.deepseek.com/)
+## Quick Start
 
-## Notes
+```bash
+# 1. Clone the repo
+git clone <repo-url>
+cd prompt-maker
 
-- API keys are stored locally in your browser
-- No data is sent to servers except the API providers
-- For issues with APIs, use the Troubleshooting guide
+# 2. Install dependencies
+npm install
+
+# 3. Copy the example env file and add your keys
+cp .env.example .env
+
+# 4. Start the dev server
+npm run dev
+```
+
+Open the URL Vite prints (usually `http://localhost:5173`).
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your keys:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes (for Single AI and Multi-AI modes) | [Get one here](https://platform.openai.com/api-keys) |
+| `DEEPSEEK_API_KEY` | No (Multi-AI only) | [Get one here](https://platform.deepseek.com/) |
+
+Template-based generation works without any API keys.
+
+**Note:** API keys entered in the browser UI are saved to `localStorage` -- they are never sent anywhere except the respective API provider.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server with hot reload |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Preview the production build locally |
+
+## Project Structure
+
+```
+prompt-maker/
+  index.html        # Main HTML page
+  script.js         # All application logic (API calls, UI, aggregation)
+  styles.css        # Styling
+  vite.config.ts    # Vite config (vanilla HTML/JS/CSS, no plugins)
+  package.json      # Dev dependency: Vite only
+  .env.example      # Template for required environment variables
+```
+
+## How Multi-AI Aggregation Works
+
+1. Your topic is sent to each enabled model in parallel.
+2. A flow diagram in the UI tracks progress per model.
+3. Once all models finish, an aggregator pass (GPT-4o Mini) merges the best elements from every response into a single optimized prompt.
+4. If the aggregator call fails, a local fallback combines the raw outputs so you never leave empty-handed.
