@@ -1,16 +1,19 @@
+// Debounce flag -- prevents spam clicks during API calls
+let isGenerating = false;
+
 // Store API keys in local storage
 document.addEventListener('DOMContentLoaded', function() {
   const openaiKeyInput = document.getElementById('openai-api-key');
   const deepseekKeyInput = document.getElementById('deepseek-api-key');
-  
+
   if (localStorage.getItem('openai-api-key')) {
     openaiKeyInput.value = localStorage.getItem('openai-api-key');
   }
-  
+
   if (localStorage.getItem('deepseek-api-key')) {
     deepseekKeyInput.value = localStorage.getItem('deepseek-api-key');
   }
-  
+
   openaiKeyInput.addEventListener('change', function() {
     localStorage.setItem('openai-api-key', openaiKeyInput.value);
   });
@@ -21,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Toggle between generation methods
   let generationMethod = 'template';
-  
+
   document.getElementById('template-method').addEventListener('click', function() {
     generationMethod = 'template';
     setActiveMethod(this);
@@ -48,10 +51,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Generate prompt based on selected method
   document.getElementById('generate').addEventListener('click', function() {
+    if (isGenerating) {
+      showToast('Generation already in progress, please wait...', 'error');
+      return;
+    }
+
     const keywords = document.getElementById('keywords').value.trim();
     const tone = document.getElementById('tone').value;
     const length = document.getElementById('length').value;
-    
+
     if (!keywords) {
       showToast('Please enter some keywords', 'error');
       return;
@@ -127,11 +135,12 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
 }
 
 function generateSingleAiPrompt(keywords, tone, length, apiKey) {
+  isGenerating = true;
   document.getElementById('loading').style.display = 'block';
   document.getElementById('result').style.display = 'none';
   document.getElementById('model-results').style.display = 'none';
   document.getElementById('flow-diagram').style.display = 'none';
-  
+
   const systemPrompt = `You are an expert prompt engineer. Your task is to create an optimized prompt for ChatGPT or similar LLMs.
 The prompt should be designed to get high-quality responses about the provided topic.`;
 
@@ -140,6 +149,9 @@ The prompt should be in a ${tone} tone and should generate a ${length} response.
 The prompt should be comprehensive, clear, and designed to get the most helpful and accurate information from an AI assistant.
 Return ONLY the optimized prompt, without any explanations, introductions, or surrounding text.`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -147,21 +159,21 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7
-    })
+    }),
+    signal: controller.signal
   })
   .then(response => {
     if (!response.ok) {
-      // Get more detailed error information
       return response.json().then(errorData => {
         console.error('OpenAI API Error:', errorData);
         let errorMessage = 'API request failed';
-        
+
         if (errorData.error) {
           if (errorData.error.type === 'invalid_request_error') {
             errorMessage = 'Invalid API key or request format';
@@ -173,10 +185,9 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
             errorMessage = errorData.error.message;
           }
         }
-        
+
         throw new Error(`OpenAI API Error: ${errorMessage}`);
       }).catch(jsonError => {
-        // If parsing the error response fails
         throw new Error(`OpenAI API Error: ${response.status} ${response.statusText}`);
       });
     }
@@ -185,18 +196,27 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
   .then(data => {
     const generatedPrompt = data.choices[0].message.content;
     document.getElementById('prompt').value = generatedPrompt;
-    document.getElementById('prompt-source').textContent = 'Source: OpenAI GPT-3.5 Turbo';
+    document.getElementById('prompt-source').textContent = 'Source: OpenAI GPT-4o Mini';
     document.getElementById('loading').style.display = 'none';
     document.getElementById('result').style.display = 'block';
   })
   .catch(error => {
     console.error('Error:', error);
     document.getElementById('loading').style.display = 'none';
-    showToast('Error generating prompt. Please check your API key and try again.', 'error');
+    if (error.name === 'AbortError') {
+      showToast('Request timed out after 30 seconds. Please try again.', 'error');
+    } else {
+      showToast('Error generating prompt. Please check your API key and try again.', 'error');
+    }
+  })
+  .finally(() => {
+    clearTimeout(timeoutId);
+    isGenerating = false;
   });
 }
 
 function generateMultiAiPrompt(keywords, tone, length, openaiKey, deepseekKey) {
+  isGenerating = true;
   // Reset UI
   document.getElementById('loading').style.display = 'block';
   document.getElementById('result').style.display = 'none';
@@ -213,7 +233,7 @@ function generateMultiAiPrompt(keywords, tone, length, openaiKey, deepseekKey) {
   const modelResultsContainer = document.getElementById('model-results');
   
   // OpenAI model card
-  const openaiCard = createModelCard('OpenAI GPT-3.5', 'Specialized in following instructions precisely');
+  const openaiCard = createModelCard('OpenAI GPT-4o Mini', 'Specialized in following instructions precisely');
   modelResultsContainer.appendChild(openaiCard);
   
   // DeepSeek model card (if API key provided)
@@ -295,9 +315,13 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
   }
   
   // Function to check if all models have completed
+  function finishGenerating() {
+    isGenerating = false;
+  }
+
   function checkAllComplete() {
     completedCount++;
-    
+
     if (completedCount >= totalModels) {
       // Set aggregation step as active
       setActiveFlowStep('step-aggregate');
@@ -317,6 +341,7 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
               document.getElementById('prompt-source').textContent = 'Source: Multi-AI Aggregation (via OpenAI)';
               document.getElementById('loading').style.display = 'none';
               document.getElementById('result').style.display = 'block';
+              finishGenerating();
             })
             .catch(error => {
               console.error('Aggregation Error:', error);
@@ -327,6 +352,7 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
               document.getElementById('prompt-source').textContent = 'Source: Multi-AI Aggregation (local fallback)';
               document.getElementById('loading').style.display = 'none';
               document.getElementById('result').style.display = 'block';
+              finishGenerating();
             });
         } else {
           // Use local aggregation
@@ -338,16 +364,18 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
             document.getElementById('prompt-source').textContent = 'Source: Multi-AI Aggregation (local)';
             document.getElementById('loading').style.display = 'none';
             document.getElementById('result').style.display = 'block';
+            finishGenerating();
           } catch (error) {
             console.error('Local Aggregation Error:', error);
             setModelStatus(aggregatorCard, 'error');
             document.getElementById('loading').style.display = 'none';
             showToast('Error during aggregation. Using best available prompt.', 'error');
-            
+
             // Use the best available prompt if everything fails
             document.getElementById('prompt').value = allPrompts[0].prompt;
             document.getElementById('prompt-source').textContent = `Source: ${allPrompts[0].source} (fallback)`;
             document.getElementById('result').style.display = 'block';
+            finishGenerating();
           }
         }
       } else {
@@ -355,6 +383,7 @@ Please provide detailed information while maintaining a ${tone} tone throughout.
         setModelStatus(aggregatorCard, 'error');
         document.getElementById('loading').style.display = 'none';
         showToast('All prompt generation attempts failed.', 'error');
+        finishGenerating();
       }
     }
   }
@@ -369,6 +398,9 @@ The prompt should be in a ${tone} tone and should generate a ${length} response.
 The prompt should be comprehensive, clear, and designed to get the most helpful and accurate information from an AI assistant.
 Return ONLY the optimized prompt, without any explanations, introductions, or surrounding text.`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -376,21 +408,22 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7
-    })
+    }),
+    signal: controller.signal
   })
   .then(response => {
+    clearTimeout(timeoutId);
     if (!response.ok) {
-      // Get more detailed error information
       return response.json().then(errorData => {
         console.error('OpenAI API Error:', errorData);
         let errorMessage = 'API request failed';
-        
+
         if (errorData.error) {
           if (errorData.error.type === 'invalid_request_error') {
             errorMessage = 'Invalid API key or request format';
@@ -402,10 +435,9 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
             errorMessage = errorData.error.message;
           }
         }
-        
+
         throw new Error(`OpenAI API Error: ${errorMessage}`);
       }).catch(jsonError => {
-        // If parsing the error response fails
         throw new Error(`OpenAI API Error: ${response.status} ${response.statusText}`);
       });
     }
@@ -422,6 +454,9 @@ The prompt should be comprehensive, clear, and designed to get the most helpful 
 Return ONLY the optimized prompt, without any explanations, introductions, or surrounding text.`;
 
   // Call DeepSeek's API
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   return fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -438,11 +473,12 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
       ],
       temperature: 0.7,
       max_tokens: 1000
-    })
+    }),
+    signal: controller.signal
   })
   .then(response => {
+    clearTimeout(timeoutId);
     if (!response.ok) {
-      // Get more detailed error information
       return response.json().then(errorData => {
         console.error('DeepSeek API Error:', errorData);
         let errorMessage = 'API request failed';
@@ -489,6 +525,9 @@ Analyze these prompts and create a single optimized version that combines the st
 Return ONLY the optimized prompt, without any explanations, introductions, or surrounding text.`;
 
   // Call OpenAI to aggregate the prompts
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -496,15 +535,17 @@ Return ONLY the optimized prompt, without any explanations, introductions, or su
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7
-    })
+    }),
+    signal: controller.signal
   })
   .then(response => {
+    clearTimeout(timeoutId);
     if (!response.ok) {
       throw new Error('Aggregation API request failed');
     }
