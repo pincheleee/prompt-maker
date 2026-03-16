@@ -94,3 +94,10 @@ prompt-maker/
 2. A flow diagram in the UI tracks progress per model.
 3. Once all models finish, an aggregator pass (GPT-4o Mini) merges the best elements from every response into a single optimized prompt.
 4. If the aggregator call fails, a local fallback combines the raw outputs so you never leave empty-handed.
+
+## Recent Changes (2026-03-16)
+
+- API keys stored in sessionStorage (cleared on tab close, never persisted)
+- Promise.allSettled for multi-AI aggregation (one model failure no longer breaks the batch)
+- Improved error handling across all API calls
+- Shared prompt builder extracted for consistency across generation methods
