@@ -66,7 +66,7 @@ Copy `.env.example` to `.env` and fill in your keys:
 
 Template-based generation works without any API keys.
 
-**Note:** API keys entered in the browser UI are saved to `localStorage` -- they are never sent anywhere except the respective API provider.
+**Note:** API keys entered in the browser UI are saved to `sessionStorage` (cleared when the browser tab closes) -- they are never sent anywhere except the respective API provider.
 
 ## Scripts
 
