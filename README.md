@@ -2,6 +2,14 @@
 
 A web-based tool that generates optimized prompts for LLMs (ChatGPT, Claude, etc.) using multiple AI models. Built with vanilla HTML, CSS, and JavaScript, bundled with Vite.
 
+## Project Status
+
+- Status: stable
+- Last major update: 2026-03-16
+- Current focus: lightweight prompt generation across template, single-model, and multi-model modes
+- Run: `npm run dev`
+- Next step: keep the simple front-end experience reliable without overcomplicating the app
+
 ## Features
 
 - **Three Generation Methods**:
